@@ -7,17 +7,17 @@ order to produce ranked results.
 
 It also tests the input data by adding some randomization in order to see how
 stable the results are. If small random ratings changes alter the rankings it is
-considered unstable. The random stress tests all users to decide how confident
-they are in the results.
+considered unstable. The random stress tests allows users to get a sense of how
+confident they feel about the results.
 
 ## Input data (from YAML configuration).
 
 Quandaries are defined by the following information:
 
 * A set of alternative choices.
-* A set of factors for rating them.
+* A set of factors, e.g. cost, features, etc., for rating them.
 * Spread bars for each factor that rate the choices along an axis.
-* A priority spread bar that rates the importance of all the factors.
+* A priority spread bar that rates the relative importance of all the factors.
 
 The above information is defined by the user in quandary configuration (YAML).
 
