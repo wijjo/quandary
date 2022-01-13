@@ -1,0 +1,405 @@
+#!venv/bin/python3
+
+# Copyright (C) 2022, Steven Cooper
+#
+# This file is part of Quandary.
+#
+# Quandary is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Quandary is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Quandary.  If not, see <https://www.gnu.org/licenses/>.
+
+"""Quandary "solver"."""
+
+import argparse
+import os
+import random
+import sys
+import yaml
+from dataclasses import dataclass
+from typing import Dict, Iterable, List, Set
+
+# === Types and constants
+
+# GenericLetter type is cast or replaced by more specific type where it is known.
+GenericLetter = str
+ChoiceLetter = GenericLetter
+FactorLetter = GenericLetter
+
+ChoiceLabel = str
+FactorName = str
+RatingSpread = str
+Rating = float
+
+# GenericRatings type is cast or replaced by more specific type where it is known.
+GenericRatings = Dict[GenericLetter, Rating]
+ChoiceRatings = Dict[ChoiceLetter, Rating]
+FactorsRatings = Dict[FactorLetter, ChoiceRatings]
+PriorityRatings = Dict[FactorLetter, Rating]
+ChoicesMap = Dict[ChoiceLetter, ChoiceLabel]
+FactorsMap = Dict[FactorLetter, FactorName]
+
+# Various constants and defaults.
+DESCRIPTION = 'Quandary resolver'
+DECIMAL_PLACES = 2
+RANDOM_STEPS = 100
+RANDOM_TRIALS = 100
+# Proportion of random trials changing rankings that is considered "volatile".
+VOLATILITY_THRESHOLD = .5
+
+
+@dataclass
+class Options:
+    """Runtime options."""
+    decimal_places: int
+    random_steps: int
+    random_trials: int
+    config_paths: List[str]
+
+
+@dataclass
+class Configuration:
+    """Parsed configuration."""
+    title: str
+    choices: ChoicesMap
+    factors: FactorsMap
+    factors_ratings: FactorsRatings
+    priority_ratings: PriorityRatings
+
+
+@dataclass
+class ChoiceResult:
+    """Choice result, with rating."""
+    label: str
+    rating: float
+
+
+@dataclass
+class Results:
+    """Evaluation results with ranked choice results."""
+    choice_rankings: List[ChoiceResult]
+    max_label_width: int
+
+
+# === Utilities
+
+
+def error(message: str):
+    """
+    Display error message.
+
+    :param message: error message
+    """
+    sys.stderr.write(f'ERROR: {message}{os.linesep}')
+
+
+# === Raw configuration parsing.
+
+
+def parse_choices(raw_data: ChoicesMap) -> ChoicesMap:
+    """
+    Parse choices map.
+
+    :param raw_data: raw choices map
+    :return: choices map
+    """
+    # TODO: Check raw data?
+    return raw_data
+
+
+def parse_factors(raw_data: FactorsMap) -> FactorsMap:
+    """
+    Parse factors map.
+
+    :param raw_data: raw factors map
+    :return: factors map
+    """
+    # TODO: Check raw data?
+    return raw_data
+
+
+def parse_ratings(spread: RatingSpread,
+                  valid_letters: Iterable[GenericLetter],
+                  ) -> GenericRatings:
+    """
+    Parse ratings from a spread bar.
+
+    :param spread: spread bar
+    :param valid_letters: letters that may appear on the spread bar
+    :return: parsed ratings
+    """
+    # TODO: Check raw data?
+    ratings: GenericRatings = {}
+    divisor = len(spread) - 1
+    # Special case to avoid dividing by zero.
+    if divisor <= 0:
+        raise ValueError('Ratings spread must be at least 2 characters wide.')
+    for valid_letter in valid_letters:
+        pos = spread.find(valid_letter)
+        if pos >= 0:
+            ratings[valid_letter] = pos / divisor
+    return ratings
+
+
+def parse_factors_ratings(raw_data: Dict[FactorLetter, RatingSpread],
+                          choices: ChoicesMap,
+                          ) -> FactorsRatings:
+    """
+    Parse factors choice ratings from factors choice spread bar dictionary.
+
+    :param raw_data: raw factors choice ratings dictionary
+    :param choices: maps choice letters to labels
+    :return: parsed factors ratings
+    """
+    # TODO: Check raw data?
+    return {
+        letter: parse_ratings(spread, choices.keys())
+        for letter, spread in raw_data.items()
+    }
+
+
+def parse_priority_ratings(spread: RatingSpread,
+                           factors: FactorsMap,
+                           ) -> PriorityRatings:
+    """
+    Parse factor priority ratings from spread bar.
+
+    :param spread: priority rating spread bar
+    :param factors: maps factor letters to names
+    :return: parsed factor priority ratings
+    """
+    # TODO: Check raw data?
+    return parse_ratings(spread, factors.keys())
+
+
+def parse_configuration_file(path: str) -> Configuration:
+    """
+    Parse YAML configuration file.
+
+    :param path: configuration file path
+    :return: parsed configuration data
+    """
+    with open(path) as stream:
+        raw_data = yaml.safe_load(stream)
+        title = raw_data.get('title', 'Quandary')
+        choices = parse_choices(raw_data['choices'])
+        factors = parse_factors(raw_data['factors'])
+        factors_ratings = parse_factors_ratings(raw_data['ratings'], choices)
+        priority_ratings = parse_priority_ratings(raw_data['priorities'], factors)
+        return Configuration(title, choices, factors, factors_ratings, priority_ratings)
+
+
+def _report_unknown_letters(letters: Iterable[GenericLetter], label: str, section: str):
+    sorted_letters = sorted(letters)
+    if letters:
+        error(f'Ignored unknown {label} {"letters" if len(sorted_letters) > 1 else "letter"}'
+              f' "{" ".join(sorted_letters)}" in "{section}" configuration')
+
+
+def evaluate_stability(config: Configuration,
+                       results: Results,
+                       options: Options,
+                       ) -> float:
+    """
+    Calculate stability (see README.md for more information).
+
+    :param config: configuration data
+    :param results: results data
+    :param options: runtime options
+    :return: stability value (between 0 and 1)
+    """
+    ranked_labels = [ranking.label for ranking in results.choice_rankings]
+    for random_step in range(1, options.random_steps + 1):
+        factor = random_step / options.random_steps
+        changed_count = 0
+        for trial in range(1, options.random_trials + 1):
+            results = evaluate_configuration(randomize_configuration(config, factor))
+            trial_ranked_labels = [ranking.label for ranking in results.choice_rankings]
+            if trial_ranked_labels != ranked_labels:
+                changed_count += 1
+        if changed_count / options.random_trials >= VOLATILITY_THRESHOLD:
+            return factor
+    return 0
+
+
+def evaluate_configuration(config: Configuration) -> Results:
+    """
+    Evaluate configuration data and provide results.
+
+    :param config: configuration data
+    :return: evaluation results
+    """
+    total_choice_ratings: ChoiceRatings = {letter: 0 for letter in config.choices.keys()}
+    bad_ratings_factors: Set[str] = set()
+    bad_ratings_choices: Set[str] = set()
+    missing_priority_factors: Set[str] = set()
+    missing_choice_ratings: Set[str] = set()
+    for factor_letter, choice_ratings in config.factors_ratings.items():
+        if factor_letter not in config.factors:
+            bad_ratings_factors.add(factor_letter)
+            continue
+        if factor_letter not in config.priority_ratings:
+            missing_priority_factors.add(factor_letter)
+            continue
+        bad_ratings_choices.update(filter(lambda letter: letter not in config.choices,
+                                   choice_ratings.keys()))
+        priority = config.priority_ratings[factor_letter]
+        for choice_letter in config.choices.keys():
+            if choice_letter not in config.choices:
+                bad_ratings_choices.add(choice_letter)
+                continue
+            if choice_letter not in choice_ratings:
+                missing_choice_ratings.add(choice_letter)
+                continue
+            total_choice_ratings[choice_letter] += choice_ratings[choice_letter] * priority
+    _report_unknown_letters(bad_ratings_factors, 'factor', 'ratings')
+    _report_unknown_letters(bad_ratings_choices, 'choice', 'ratings')
+    choice_rankings: List[ChoiceResult] = []
+    max_label_width = 0
+    for choice_letter in config.choices.keys():
+        label = config.choices[choice_letter]
+        if len(label) > max_label_width:
+            max_label_width = len(label)
+        rating = total_choice_ratings[choice_letter]
+        choice_rankings.append(ChoiceResult(label, rating))
+    choice_rankings.sort(key=lambda choice_ranking: choice_ranking.rating, reverse=True)
+    return Results(choice_rankings, max_label_width)
+
+
+def _randomize_rating(rating: float,
+                      factor: float,
+                      ) -> float:
+    return max(min(rating + random.choice([factor, -factor]), 1), 0)
+
+
+def _randomize_generic_ratings(ratings: GenericRatings,
+                               factor: float,
+                               ) -> GenericRatings:
+    return {
+        letter: _randomize_rating(rating, factor)
+        for letter, rating in ratings.items()
+    }
+
+
+def _randomize_factors_ratings(factors_ratings: FactorsRatings,
+                               factor: float,
+                               ) -> FactorsRatings:
+    return {
+        letter: _randomize_generic_ratings(ratings, factor)
+        for letter, ratings in factors_ratings.items()
+    }
+
+
+def _randomize_priority_ratings(priority_ratings: PriorityRatings,
+                                factor: float,
+                                ) -> PriorityRatings:
+    return _randomize_generic_ratings(priority_ratings, factor)
+
+
+def randomize_configuration(config: Configuration,
+                            factor: float,
+                            ) -> Configuration:
+    """
+    Randomize configuration ratings based on a perturbation factor.
+
+    :param config: configuration data
+    :param factor: perturbation factor
+    :return: randomized configuration
+    """
+    return Configuration(f'{config.title} [randomization={factor:.2f}]',
+                         dict(config.choices),
+                         dict(config.factors),
+                         _randomize_factors_ratings(config.factors_ratings, factor),
+                         _randomize_priority_ratings(config.priority_ratings, factor))
+
+
+def produce_report(config_path: str, options: Options):
+    """
+    Load configuration file and display evaluation report.
+
+    :param config_path: configuration file path
+    :param options: runtime options
+    """
+    config = parse_configuration_file(config_path)
+    results = evaluate_configuration(config)
+    headings = ('RANK', 'CHOICE', 'RATING')
+    max_label_width = max(results.max_label_width, len(headings[1]))
+    header_format = f'%4s  %-{max_label_width}s  %s'
+    row_format = f'%4d  %-{max_label_width}s  %.{options.decimal_places}f'
+    print(f'''
+{config.title}
+''')
+    header = header_format % headings
+    print(f'''\
+{header}\
+''')
+    for idx, choice_ranking in enumerate(results.choice_rankings):
+        row = row_format % (idx + 1, choice_ranking.label, choice_ranking.rating)
+        print(f'''\
+{row}\
+''')
+    if options.random_steps > 0:
+        stability = evaluate_stability(config, results, options)
+        print(f'''
+Stability: {stability * 100:.0f}%
+
+Stability is the ratings change percentage needed to alter rankings
+more than {VOLATILITY_THRESHOLD * 100:.0f}% of the time.
+''')
+
+
+def parse_command_line() -> Options:
+    """
+    Parse command line.
+
+    :return: runtime options
+    """
+
+    parser = argparse.ArgumentParser(description=DESCRIPTION)
+    parser.add_argument(
+        '-d', '--decimal-places', dest='DECIMAL_PLACES', default=DECIMAL_PLACES,
+        help=f'number of output decimal places (default: {DECIMAL_PLACES})')
+    parser.add_argument(
+        '-r', '--random-steps', dest='RANDOM_STEPS', default=RANDOM_STEPS,
+        help=f'number of randomization steps (default: {RANDOM_STEPS})')
+    parser.add_argument(
+        '-t', '--random-trials', dest='RANDOM_TRIALS', default=RANDOM_TRIALS,
+        help=f'number of randomization trials (default: {RANDOM_TRIALS}')
+    parser.add_argument(
+        dest='CONFIG_PATHS', nargs='+',
+        help='configuration file path(s)')
+    args = parser.parse_args()
+
+    def _get_quantity(dest: str) -> int:
+        try:
+            quantity = int(getattr(args, dest))
+            if quantity < 0:
+                raise ValueError(f'value must be >= 0')
+            return quantity
+        except TypeError as exc:
+            error(f'Bad {dest} value: {getattr(args, dest)}: {exc}')
+            sys.exit(1)
+
+    return Options(_get_quantity('DECIMAL_PLACES'),
+                   _get_quantity('RANDOM_STEPS'),
+                   _get_quantity('RANDOM_TRIALS'),
+                   args.CONFIG_PATHS)
+
+
+def main():
+    """Main function parses the command line and produces report(s)."""
+    options = parse_command_line()
+    for config_path in options.config_paths:
+        produce_report(config_path, options)
+
+
+if __name__ == '__main__':
+    main()
