@@ -1,2 +1,2 @@
 # quandary
-Quandary "solver" to evaluate difficult choice.
+Quandary "solver" to evaluate difficult choices.
