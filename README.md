@@ -7,8 +7,8 @@ order to produce ranked results.
 
 It also tests the input data by adding some randomization in order to see how
 stable the results are. If small random ratings changes alter the rankings it is
-considered unstable. The random stress tests all users to decide how confident
-they are in the results.
+considered unstable. The random stress tests allow users to get a sense of how
+confident they feel about the results.
 
 ## Input data (from YAML configuration).
 
