@@ -2,7 +2,7 @@
 
 Quandaries are problems with a set of difficult choices. This tool provides a
 way to break them down into a data format expressed as YAML configuration files.
-It evaluates choices based on user-defined factors, ratings, and priorities in
+It evaluates choices based on user-defined criteria, ratings, and priorities in
 order to produce ranked results.
 
 It also tests the input data by adding some randomization in order to see how
@@ -14,23 +14,37 @@ they are in the results.
 
 Quandaries are defined by the following information:
 
-* A set of alternative choices.
-* A set of factors for rating them.
-* Spread bars for each factor that rate the choices along an axis.
-* A priority spread bar that rates the importance of all the factors.
+* A set of choices (alternatives).
+* A set of criteria for rating them.
+* Spread bars for each criterion that rate the choices along an axis.
+* A priority spread bar that rates the importance of all the criteria.
 
 The above information is defined by the user in quandary configuration (YAML).
 
 ## Spread bars.
 
-Spread bars allow placement of letters along an X axis of arbitrary length to
-specify multiple ratings in a visually-meaningful arrangement. The position of
-each rating letter determines the rating. A choice spread bar use choice letters
-placed along the axis. A factor priority spread bar use factor letters placed
-along the axis.
+Spread bars provide ratings for choices or criteria by arranging corresponding
+letters along a horizontal axis. Letter positions imply ratings based on their
+distance along the axis. 
 
-If this becomes a graphical application spread bars could be implemented as
-slider controls with multiple sliders.
+The axis can have an arbitrary length. The spread bars in the example
+configuration below are 50 characters wide. A longer axis can help when there
+are more choices or criteria, or when a finer resolution is desired.
+
+Gaps between letters can be occupied by blanks or any non-letter characters,
+e.g. underscore ("_"), period ("."), hyphen ("-"), caret ("^"), etc.. Whatever
+filler characters you choice, make sure to quote the spread bar string if YAML
+syntax rules require it.
+
+The spread bar format allows specification of multiple ratings in a
+visually-meaningful arrangement. 
+
+Criterion "choices" spread bars rates choices relative to each other.
+
+A priorities "criteria" spread bar rates criteria relative to each other.
+
+In a graphical application a spread bar could be represented by a slider control
+with multiple thumb inputs, one for each choice or criterion letter.
 
 ## Output report.
 
@@ -46,39 +60,102 @@ The stability rating is calculated as follows:
 * If the rankings change more than a threshold percentage of trials that
   perturbation percentage is taken as the stability rating.
 
+## Configuration file format.
+
+The configuration file uses YAML format. The overall format is a YAML dictionary
+with four major section keys, "quandary", "choices", "criteria", and
+"priorities". See below for more information about each section.
+
+### "quandary" section.
+
+The "quandary" section provides general descriptive information.
+
+#### "quandary" properties.
+
+- **description**: Description of quandary.
+
+### "choices" section.
+
+The "choices" section lays out alternative choices. It is formatted as a YAML
+dictionary with a letter serving as the key for each choice item.
+
+#### Choice item properties.
+
+- **name** - Choice name.
+- **(other)** - Other arbitrary properties can provide additional data, 
+  e.g. cost.  
+
+### "criteria" section.
+
+The "criteria" section specifies one or more criteria with accompanying ratings.
+It is formatted as a YAML dictionary with a letter service as the key for each
+criterion item.
+
+#### Criterion item properties.
+
+- **name** - Criterion name or description.
+- **choices** - Choices spread bar for relative ratings by choice letter.
+
+### "priorities" section.
+
+The "priorities" section provides priority ratings for the criteria.
+
+#### "priorities" properties.
+
+- **criteria** - Criteria spread bar for relative ratings by criterion letter.
+
 ## Configuration file example (YAML):
 
+The example configuration compares 3 premium e-readers. It should work as input
+to the quandary program, and produce a reasonable result.
+
 ```yaml
-title: Premium E-Readers
+quandary:
+  description: Premium E-Readers
 
 choices:
-  s: Kobo Sage
-  l: Kobo Libra 2
-  p: Paperwhite Signature
+  S:
+    name: Kobo Sage
+    cost: 260
+  L:
+    name: Kobo Libra 2
+    cost: 180
+  P:
+    name: Paperwhite Signature
+    cost: 152
 
-factors:
-  a: annotations
-  c: cost
-  d: display
-  e: ergonomics
-  i: importing
-  l: library
-  p: power
-  s: store
-  u: usability
-  v: versatility
+criteria:
+  A:
+    name: Annotation support
+    ratings: ______________LP__________________________S_______
+  B:
+    name: Battery and power
+    ratings: ______________________S_______________PL__________
+  C:
+    name: Cost
+    ratings: __________S___________L___P_______________________
+  D:
+    name: Display
+    ratings: ____________________________________P___L___S_____
+  E:
+    name: Ergonomics
+    ratings: ______________________________P_____S___L_________
+  F:
+    name: File format support
+    ratings: ____________________________________P__L______S___
+  L:
+    name: Library
+    ratings: __________________________P_____________________SL
+  S:
+    name: Store
+    ratings: ________________________SL_______________________P
+  U:
+    name: Usability
+    ratings: ______________________________P________LS_________
+  V:
+    name: Versatility
+    ratings: ___________P______________________SL______________
 
-ratings:
-  a: ______________lp__________________________s_______
-  c: __________s___________l___p_______________________
-  d: ____________________________________p___l___s_____
-  e: ______________________________p_____s___l_________
-  i: ____________________________________p__l______s___
-  l: __________________________p_____________________sl
-  p: ______________________s_______________pl__________
-  s: ________________________sl_______________________p
-  u: ______________________________p________ls_________
-  v: ___________p______________________sl______________
-
-priorities: _____a____________v____c__i__p___u______des___l___
+priorities:
+  ratings: _____A____________V____C__F__B___U___S___DE___L___
 ```

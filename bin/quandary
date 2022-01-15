@@ -1,0 +1,34 @@
+#!venv/bin/python3
+
+# Copyright (C) 2022, Steven Cooper
+#
+# This file is part of Quandary.
+#
+# Quandary is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Quandary is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Quandary.  If not, see <https://www.gnu.org/licenses/>.
+
+"""Quandary "solver"."""
+
+
+def quandary_main():
+    import sys
+    import os
+    root_folder = os.path.dirname(os.path.dirname(__file__))
+    if root_folder not in sys.path:
+        sys.path.insert(0, root_folder)
+    from quandary.main import main
+    main()
+
+
+if __name__ == '__main__':
+    quandary_main()
