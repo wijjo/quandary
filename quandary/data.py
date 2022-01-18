@@ -27,7 +27,7 @@ CriterionLetter = GenericLetter
 
 ChoiceLabel = str
 CriterionLabel = str
-RatingSpread = str
+RatingsBar = str
 Rating = float
 
 # GenericRatings type is cast or replaced by more specific type where it is known.
@@ -49,7 +49,7 @@ DEFAULT_RANDOM_TRIALS = 1000
 MINIMUM_RANDOM_TRIALS = 10
 MAXIMUM_RANDOM_TRIALS = 10000
 DEFAULT_STABILITY_PERCENTAGE = 70
-MINIMUM_SPREAD_BAR_WIDTH = 20
+MINIMUM_RATINGS_BAR_WIDTH = 20
 
 
 @dataclass

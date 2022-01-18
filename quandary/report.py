@@ -23,7 +23,7 @@ from .data import Quandary, Results, DEFAULT_DECIMAL_PLACES
 def produce_report(quandary: Quandary,
                    results: Results,
                    decimal_places: int = DEFAULT_DECIMAL_PLACES,
-                   stability: float = None,
+                   confidence: float = None,
                    details: bool = False,
                    ):
     """
@@ -32,7 +32,7 @@ def produce_report(quandary: Quandary,
     :param quandary: quandary definition
     :param results: analysis results
     :param decimal_places: number of decimal places
-    :param stability: optional stability rating
+    :param confidence: optional confidence rating
     :param details: display extra details if True
     """
     rating_format = f'%{decimal_places + 2}.{decimal_places}f'
@@ -48,9 +48,11 @@ RANK  RATING  CHOICE\
         print(f'''\
 {row}\
 ''')
-    if stability is not None:
+    if confidence is not None:
         print(f'''
-Rankings are stable with up to {stability * 100:.0f}% change.
+Confidence: {confidence * 100:.0f}%
+
+Confidence is the highest random stress percentage with stable rankings.
 ''')
     if details:
         print('''\

@@ -21,7 +21,7 @@ import yaml
 from typing import Iterable, Any, Optional, Tuple, List
 
 from .data import ChoicesMap, CriteriaMap, GenericRatings, PriorityRatings, \
-    Quandary, Criterion, MINIMUM_SPREAD_BAR_WIDTH
+    Quandary, Criterion, MINIMUM_RATINGS_BAR_WIDTH
 from .utility import critical_error
 
 
@@ -42,15 +42,15 @@ def _parse_ratings(label: str,
                    valid_letters: Iterable[str],
                    ) -> GenericRatings:
     if not isinstance(raw_ratings_data, str):
-        critical_error(f'{label}: spread bar is not a string.')
-    spread_bar = raw_ratings_data
-    if len(spread_bar) < MINIMUM_SPREAD_BAR_WIDTH:
-        critical_error(f'{label}: spread bar is not at least'
-                       f' {MINIMUM_SPREAD_BAR_WIDTH} characters wide.')
-    divisor = len(spread_bar) - 1
+        critical_error(f'{label}: ratings bar is not a string.')
+    ratings_bar = raw_ratings_data
+    if len(ratings_bar) < MINIMUM_RATINGS_BAR_WIDTH:
+        critical_error(f'{label}: ratings bar is not at least'
+                       f' {MINIMUM_RATINGS_BAR_WIDTH} characters wide.')
+    divisor = len(ratings_bar) - 1
     ratings = {
         letter.upper(): pos / divisor
-        for pos, letter in enumerate(spread_bar)
+        for pos, letter in enumerate(ratings_bar)
         if letter.isalpha()
     }
     _check_letters(label, ratings.keys(), valid_label, valid_letters)
@@ -137,7 +137,7 @@ class _ConfigurationLoader:
         label, priorities_data = self._get_block('priorities')
         ratings_label = f'{label}.ratings'
         if 'ratings' not in priorities_data:
-            critical_error(f'{ratings_label}: missing spread bar.')
+            critical_error(f'{ratings_label}: missing ratings bar.')
         return _parse_ratings(ratings_label,
                               priorities_data['ratings'],
                               'criterion',

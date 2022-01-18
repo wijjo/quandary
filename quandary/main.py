@@ -115,11 +115,10 @@ def main():
         produce_report(quandary,
                        results,
                        decimal_places=options.decimal_places,
-                       stability=stability,
+                       confidence=stability,
                        details=options.details)
 
 
 # This module can be run directly.
 if __name__ == '__main__':
-    print('MAIN!')
     main()
